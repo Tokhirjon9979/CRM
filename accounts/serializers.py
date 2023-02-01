@@ -109,7 +109,7 @@ class ResetPasswordSerializer(serializers.ModelSerializer):
 class UserDataSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = '__all__'
+        fields = ('email', 'username', 'first_name', 'last_name', 'phone')
 
 
 class UpdateUserSerializer(serializers.ModelSerializer):
@@ -130,16 +130,16 @@ class AddEmployeeSerializer(serializers.ModelSerializer):
     password = serializers.CharField(max_length=68, min_length=6, write_only=True)
     password2 = serializers.CharField(max_length=68, min_length=6, write_only=True)
     company_id = serializers.CharField(max_length=10, min_length=1, write_only=True)
+    type = serializers.CharField(max_length=15, default='employee')
 
     class Meta:
         model = User
-        fields = ['email', 'username', 'phone', 'company_id', 'password', 'password2']
+        fields = ['email', 'username', 'phone', 'company_id', 'type', 'password', 'password2']
 
     def validate(self, attrs):
         email = attrs.get('email', '')
         username = attrs.get('username', '')
         phone = attrs.get('phone')
-
         valid_phone_number(phone)
         if not username.isalnum():
             raise serializers.ValidationError(
@@ -151,11 +151,26 @@ class AddEmployeeSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
-        employee = User.objects.create_user(**validated_data)
         password = validated_data.get('password')
+        company_id = validated_data.pop('company_id')
+        company = Company.objects.get(id=company_id)
+        employee = User.objects.create_user(**validated_data)
         employee.set_password(password)
-        company_id = validated_data.get('company_id')
-
-        employee.type = 'employee'
         employee.save()
+        company.employees.add(employee)
         return employee
+
+
+class AllEmployeeDataSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'type', 'email']
+
+
+class DeleteEmployeeSerializer(serializers.ModelSerializer):
+    company_id = serializers.CharField(max_length=10, min_length=1, write_only=True)
+    employee_ids = serializers.ListField(child=serializers.IntegerField(min_value=1, max_value=100))
+
+    class Meta:
+        model = User
+        fields = ['company_id', 'employee_ids']
