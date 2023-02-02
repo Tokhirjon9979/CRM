@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 
+from company.models import Company
 from .models import User
 from accounts import serializers
 
@@ -150,3 +151,43 @@ class AddEmployeeView(generics.GenericAPIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class AllEmployeeDataView(generics.GenericAPIView):
+    serializer_class = serializers.AllEmployeeDataSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        user = request.user
+        if user.type != 'admin' and user != Company.owner:
+            return Response({'message': 'You are not allowed to get employee data'}, status=status.HTTP_400_BAD_REQUEST)
+        company_id = kwargs.get('pk', '')
+        company = Company.objects.get(id=company_id)
+        queryset = company.employees.all()
+        serializer = serializers.AllEmployeeDataSerializer(queryset, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class DeleteEmployeeView(generics.GenericAPIView):
+    serializer_class = serializers.DeleteEmployeeSerializer
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        user = self.request.user
+        if user.type != 'admin' and user != Company.owner:
+            return Response({'message': 'You are not allowed to delete employee'}, status=status.HTTP_400_BAD_REQUEST)
+        ids = request.data.get('employee_ids')
+        idss = []
+        for i in range(len(ids)):
+            employee_id = ids[i]
+            employee = User.objects.get(id=employee_id)
+            company_id = request.data.get('company_id')
+            company = Company.objects.get(id=company_id)
+
+            if employee in company.employees.all():
+                idss.append(employee.id)
+                employee.delete()
+                employee.save()
+
+        s = ', '.join(idss)
+        return Response({'message': f'{s}th id Employee is succesfully deleted'}, status=status.HTTP_200_OK)
