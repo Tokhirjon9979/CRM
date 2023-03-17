@@ -35,8 +35,8 @@ class RegisterSerializer(serializers.ModelSerializer):
 
 
 class LoginSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(max_length=68, min_length=6, write_only=True)
-    username = serializers.CharField(max_length=255, min_length=3)
+    password = serializers.CharField(max_length=68, min_length=1, write_only=True)
+    username_or_email = serializers.CharField(max_length=255, min_length=3, write_only=True)
     tokens = serializers.SerializerMethodField()
 
     def get_tokens(self, obj):
@@ -48,21 +48,30 @@ class LoginSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['password', 'username', 'tokens']
+        fields = ['password', 'username_or_email', 'tokens']
 
     def validate(self, attrs):
-        username = attrs.get('username', '')
+        # email = attrs.get('email', '')
+        username_or_email = attrs.get('username_or_email', '')
         password = attrs.get('password', '')
-        user = auth.authenticate(username=username, password=password)
-        if not user:
-            raise AuthenticationFailed('Invalid credentials, try again')
-        if not user.is_active:
-            raise AuthenticationFailed('Account disabled, contact admin')
-        return {
-            'email': user.email,
-            'username': user.username,
-            'tokens': user.tokens
-        }
+        if '@' not in username_or_email:
+            user = User.objects.get(username=username_or_email)
+        else:
+            user = User.objects.get(email=username_or_email)
+
+        if user.email_verified:
+            user = auth.authenticate(username=user.username, password=password)
+            if not user:
+                raise AuthenticationFailed('Invalid credentials, try again')
+            if not user.is_active:
+                raise AuthenticationFailed('Account disabled, contact admin')
+            return {
+                'email': user.email,
+                'username': user.username,
+                'tokens': user.tokens
+            }
+        else:
+            raise AuthenticationFailed('Before login verify your email')
 
 
 class LogoutSerializer(serializers.Serializer):
@@ -88,7 +97,7 @@ class VerifyEmailSerializer(serializers.ModelSerializer):
 class VerificationCodeSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['verification_code']
+        fields = ['email', 'verification_code']
 
 
 class ForgotPasswordSerializer(serializers.ModelSerializer):
@@ -134,7 +143,7 @@ class AddEmployeeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['email', 'username', 'phone', 'company_id', 'type', 'password', 'password2']
+        fields = ['id', 'email', 'username', 'phone', 'company_id', 'type', 'password', 'password2']
 
     def validate(self, attrs):
         email = attrs.get('email', '')
@@ -169,8 +178,9 @@ class AllEmployeeDataSerializer(serializers.ModelSerializer):
 
 class DeleteEmployeeSerializer(serializers.ModelSerializer):
     company_id = serializers.CharField(max_length=10, min_length=1, write_only=True)
-    employee_ids = serializers.ListField(child=serializers.IntegerField(min_value=1, max_value=100))
+    employee_ids = serializers.ListField()
 
     class Meta:
         model = User
         fields = ['company_id', 'employee_ids']
+

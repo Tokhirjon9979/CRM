@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from .models import Company
+from .models import Company, Product
+from accounts.models import User
 
 
 class CompanySerializer(serializers.ModelSerializer):
@@ -20,3 +21,24 @@ class CompanySerializer(serializers.ModelSerializer):
         # print(validated_data)
         validated_data['owner'] = self.context['request'].user
         return super().create(validated_data)
+
+
+class ProductSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Product
+        fields = ['id', 'name', 'company_id', 'price', 'description', 'image', 'created_at']
+
+    # def create(self, validated_data):
+    #     return super().create(validated_data)
+
+
+# class UserSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = User
+#         fields = ('id', 'username', 'first_name', 'last_name')
+
+
+# class CompanyySerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = Company
+#         fields = 'name',
