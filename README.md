@@ -28,6 +28,6 @@ employee and admin(at the same time can be owner for company))
 23.Write management commands for automatic creating Superusers and test employees.
 
 
-The project is still ongoing!
+# The project is still ongoing!
 
 I will write here only copleted tasks by me.
