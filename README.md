@@ -26,8 +26,7 @@ employee and admin(at the same time can be owner for company))
 21.Create models Location and LocationImages for Company branches and their images.
 22.Create CRUD endpoints for Location and LocationImages models.
 23.Write management commands for automatic creating Superusers and test employees.
-24.The project is still ongoing!
-25.I will write here only copleted tasks by me.
+
 
 The project is still ongoing!
 
