@@ -25,6 +25,7 @@ class RegisterView(generics.GenericAPIView):
 class LoginAPIView(generics.GenericAPIView):
     serializer_class = serializers.LoginSerializer
 
+    # pagination_class =
     def post(self, request):
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -45,26 +46,30 @@ class LogoutAPIView(generics.GenericAPIView):
 
 class VerifyEmailView(generics.GenericAPIView):  # for authenticated users
     serializer_class = serializers.VerifyEmailSerializer
-    permission_classes = [IsAuthenticated]
+
+    # permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        user = request.user
-        user.verify_email()
+        email = request.data.get('email')
+        user = User.objects.get(email=email)
+        user.send_email_code()
 
         return Response({'message': 'Please check your email for verification code'}, status=status.HTTP_200_OK)
 
 
 class VerificationCodeView(generics.GenericAPIView):
     serializer_class = serializers.VerificationCodeSerializer
-    permission_classes = [IsAuthenticated]
+
+    # permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        user = request.user
-        if user.verification_code == request.verification_code:
+        email = request.data.get('email')
+        user = User.objects.get(email=email)
+        if user.verification_code == request.data.get('verification_code'):
             user.email_verified = True
             user.verification_code = ''
             user.save()
-            return Response(status=status.HTTP_200_OK)
+            return Response({'message':'Your email successfully verified'}, status=status.HTTP_200_OK)
         else:
             return Response({'message': 'Incorrect code'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -76,7 +81,7 @@ class ForgotPasswordView(generics.GenericAPIView):
         email = request.data.get('email')
         if email in User.objects.values_list('email', flat=True):
             user = User.objects.get(email=email)
-            user.verify_email()
+            user.send_email_code()
             # print(1, email, user)
             return Response({'message': 'Check your email for password reset'}, status=status.HTTP_200_OK)
         else:
@@ -157,6 +162,10 @@ class AllEmployeeDataView(generics.GenericAPIView):
     serializer_class = serializers.AllEmployeeDataSerializer
     permission_classes = [IsAuthenticated]
 
+    def get_queryset(self):
+        pass
+        return super().get_queryset()
+
     def get(self, request, *args, **kwargs):
         user = request.user
         if user.type != 'admin' and user != Company.owner:
@@ -187,7 +196,11 @@ class DeleteEmployeeView(generics.GenericAPIView):
             if employee in company.employees.all():
                 idss.append(employee.id)
                 employee.delete()
-                employee.save()
+                # employee.save()
+            else:
+                return Response({'message': f"Employees with this id's not found"},
+                                status=status.HTTP_200_OK)
 
-        s = ', '.join(idss)
-        return Response({'message': f'{s}th id Employee is succesfully deleted'}, status=status.HTTP_200_OK)
+        return Response({'message': f"Employees with id's: {idss}th id Employee is succesfully deleted"}, status=status.HTTP_200_OK)
+
+
